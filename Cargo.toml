@@ -1,0 +1,15 @@
+[package]
+name = "char-token-est"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Tokenless byte/char-based token-count estimator for LLM prompts. Per-model-family calibration for Claude, GPT, Gemini, Llama. Zero deps."
+authors = ["Mukunda Rao Katta <mukunda.vjcs6@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/MukundaKatta/char-token-est"
+homepage = "https://github.com/MukundaKatta/char-token-est"
+documentation = "https://docs.rs/char-token-est"
+readme = "README.md"
+keywords = ["llm", "tokens", "estimate", "tokenizer", "ai"]
+categories = ["text-processing"]
+exclude = [".github/*", "target/*"]

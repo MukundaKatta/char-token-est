@@ -85,13 +85,26 @@ pub fn estimate(text: &str, family: Family) -> u64 {
 
 /// Estimate token count using a caller-supplied chars-per-token ratio.
 ///
-/// Returns at least 1 if `text` is non-empty.
+/// Returns `0` for empty `text` and at least `1` otherwise.
+///
+/// `chars_per_token` is treated as a positive ratio. Non-positive,
+/// `NaN`, or infinite values are not meaningful and fall back to a count
+/// of one token per character (i.e. a ratio of `1.0`), so the result is
+/// always a sensible, finite token count.
 pub fn estimate_with_ratio(text: &str, chars_per_token: f64) -> u64 {
     if text.is_empty() {
         return 0;
     }
     let chars = text.chars().count() as f64;
-    let est = (chars / chars_per_token).ceil() as u64;
+    // Guard against a zero/negative/NaN/infinite ratio, which would make
+    // the division produce a non-finite or nonsensical value before the
+    // `as u64` cast.
+    let ratio = if chars_per_token.is_finite() && chars_per_token > 0.0 {
+        chars_per_token
+    } else {
+        1.0
+    };
+    let est = (chars / ratio).ceil() as u64;
     est.max(1)
 }
 
@@ -120,15 +133,48 @@ mod tests {
             Family::guess_from_model_id("meta.llama3-70b"),
             Family::Llama
         );
-        assert_eq!(Family::guess_from_model_id("gemini-2.5-pro"), Family::Gemini);
+        assert_eq!(
+            Family::guess_from_model_id("gemini-2.5-pro"),
+            Family::Gemini
+        );
         assert_eq!(
             Family::guess_from_model_id("cohere.command-r-plus"),
             Family::Cohere
         );
         assert_eq!(Family::guess_from_model_id("gpt-5"), Family::Gpt);
-        assert_eq!(
-            Family::guess_from_model_id("something-else"),
-            Family::Gpt
-        );
+        assert_eq!(Family::guess_from_model_id("something-else"), Family::Gpt);
+    }
+
+    #[test]
+    fn chars_per_token_values_are_stable() {
+        assert_eq!(Family::Gpt.chars_per_token(), 4.0);
+        assert_eq!(Family::Claude.chars_per_token(), 3.5);
+        assert_eq!(Family::Gemini.chars_per_token(), 4.0);
+        assert_eq!(Family::Llama.chars_per_token(), 3.7);
+        assert_eq!(Family::Cohere.chars_per_token(), 3.8);
+    }
+
+    #[test]
+    fn estimate_with_ratio_empty_is_zero() {
+        assert_eq!(estimate_with_ratio("", 4.0), 0);
+    }
+
+    #[test]
+    fn non_positive_or_non_finite_ratio_falls_back_to_one_per_char() {
+        // "abcd" is 4 chars; a 1.0 fallback ratio yields 4 tokens.
+        for ratio in [0.0, -2.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(
+                estimate_with_ratio("abcd", ratio),
+                4,
+                "ratio {ratio} should fall back to one token per char"
+            );
+        }
+    }
+
+    #[test]
+    fn valid_ratio_still_used() {
+        // 100 chars / 5.0 = 20 tokens.
+        let text = "a".repeat(100);
+        assert_eq!(estimate_with_ratio(&text, 5.0), 20);
     }
 }

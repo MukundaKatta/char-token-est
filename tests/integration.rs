@@ -5,7 +5,7 @@ fn realistic_short_english_is_close_to_word_count() {
     // 9 words, 44 chars. With 4 chars/token, expect ~11.
     let text = "The quick brown fox jumps over the lazy dog.";
     let n = estimate(text, Family::Gpt);
-    assert!(n >= 10 && n <= 13, "got {n} for: {text}");
+    assert!((10..=13).contains(&n), "got {n} for: {text}");
 }
 
 #[test]
